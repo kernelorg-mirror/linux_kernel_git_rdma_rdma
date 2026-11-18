@@ -19,7 +19,7 @@
 #define IONIC_ADMIN_BUSY_RETRY_MS	1
 
 /* admin queue will be considered failed if a command takes longer */
-#define IONIC_ADMIN_TIMEOUT	(HZ * 2)
+#define IONIC_ADMIN_TIMEOUT	(HZ * 5)
 #define IONIC_ADMIN_WARN	(HZ / 8)
 
 /* will poll for admin cq to tolerate and report from missed event */
