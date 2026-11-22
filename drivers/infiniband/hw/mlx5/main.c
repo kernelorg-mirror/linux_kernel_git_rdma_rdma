@@ -5022,12 +5022,21 @@ static void mlx5_ib_stage_dev_notifier_cleanup(struct mlx5_ib_dev *dev)
 		cancel_work_sync(&devr->ports[port].pkey_change_work);
 }
 
+static int mlx5_ib_stage_active_init(struct mlx5_ib_dev *dev)
+{
+	dev->ib_active = true;
+	return 0;
+}
+
+static void mlx5_ib_stage_active_cleanup(struct mlx5_ib_dev *dev)
+{
+	dev->ib_active = false;
+}
+
 void __mlx5_ib_remove(struct mlx5_ib_dev *dev,
 		      const struct mlx5_ib_profile *profile,
 		      int stage)
 {
-	dev->ib_active = false;
-
 	/* Number of stages to cleanup */
 	while (stage) {
 		stage--;
@@ -5055,7 +5064,6 @@ int __mlx5_ib_add(struct mlx5_ib_dev *dev,
 		}
 	}
 
-	dev->ib_active = true;
 	return 0;
 
 err_out:
@@ -5129,6 +5137,9 @@ static const struct mlx5_ib_profile pf_profile = {
 	STAGE_CREATE(MLX5_IB_STAGE_RESTRACK,
 		     mlx5_ib_restrack_init,
 		     NULL),
+	STAGE_CREATE(MLX5_IB_STAGE_ACTIVE,
+		     mlx5_ib_stage_active_init,
+		     mlx5_ib_stage_active_cleanup),
 };
 
 const struct mlx5_ib_profile raw_eth_profile = {
@@ -5189,6 +5200,9 @@ const struct mlx5_ib_profile raw_eth_profile = {
 	STAGE_CREATE(MLX5_IB_STAGE_RESTRACK,
 		     mlx5_ib_restrack_init,
 		     NULL),
+	STAGE_CREATE(MLX5_IB_STAGE_ACTIVE,
+		     mlx5_ib_stage_active_init,
+		     mlx5_ib_stage_active_cleanup),
 };
 
 static const struct mlx5_ib_profile plane_profile = {
@@ -5216,6 +5230,9 @@ static const struct mlx5_ib_profile plane_profile = {
 	STAGE_CREATE(MLX5_IB_STAGE_IB_REG,
 		     mlx5_ib_stage_ib_reg_init,
 		     mlx5_ib_stage_ib_reg_cleanup),
+	STAGE_CREATE(MLX5_IB_STAGE_ACTIVE,
+		     mlx5_ib_stage_active_init,
+		     mlx5_ib_stage_active_cleanup),
 };
 
 static struct ib_device *mlx5_ib_add_sub_dev(struct ib_device *parent,
