@@ -5297,7 +5297,6 @@ static int mlx5r_mp_probe(struct auxiliary_device *adev,
 
 		if (bound) {
 			rdma_roce_rescan_device(&dev->ib_dev);
-			mpi->ibdev->ib_active = true;
 			break;
 		}
 	}
