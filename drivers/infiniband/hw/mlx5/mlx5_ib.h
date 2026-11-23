@@ -584,7 +584,6 @@ struct mlx5_ib_cq {
 	/* protect resize cq
 	 */
 	struct mutex		resize_mutex;
-	struct mlx5_ib_cq_buf  *resize_buf;
 	struct ib_umem	       *resize_umem;
 	int			cqe_size;
 	struct list_head	list_send_qp;
