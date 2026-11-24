@@ -964,9 +964,7 @@ static void bnxt_re_destroy_gsi_sqp(struct bnxt_re_qp *qp)
 	bnxt_qplib_clean_qp(&qp->qplib_qp);
 
 	ibdev_dbg(&rdev->ibdev, "Destroy the shadow QP\n");
-	rc = bnxt_qplib_destroy_qp(&rdev->qplib_res, &gsi_sqp->qplib_qp);
-	if (rc)
-		ibdev_err(&rdev->ibdev, "Destroy Shadow QP failed");
+	bnxt_qplib_destroy_qp(&rdev->qplib_res, &gsi_sqp->qplib_qp);
 
 	bnxt_qplib_free_qp_res(&rdev->qplib_res, &gsi_sqp->qplib_qp);
 
@@ -1023,9 +1021,7 @@ int bnxt_re_destroy_qp(struct ib_qp *ib_qp, struct ib_udata *udata)
 
 	bnxt_qplib_flush_cqn_wq(&qp->qplib_qp);
 
-	rc = bnxt_qplib_destroy_qp(&rdev->qplib_res, &qp->qplib_qp);
-	if (rc)
-		ibdev_err(&rdev->ibdev, "Failed to destroy HW QP");
+	bnxt_qplib_destroy_qp(&rdev->qplib_res, &qp->qplib_qp);
 
 	if (qp->dbr_obj)
 		kref_put(&qp->dbr_obj->usecnt, bnxt_re_dbr_kref_release);

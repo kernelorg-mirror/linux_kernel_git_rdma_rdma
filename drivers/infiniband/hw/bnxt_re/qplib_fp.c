@@ -1465,15 +1465,13 @@ static void __clean_cq(struct bnxt_qplib_cq *cq, u64 qp)
 	}
 }
 
-int bnxt_qplib_destroy_qp(struct bnxt_qplib_res *res,
-			  struct bnxt_qplib_qp *qp)
+void bnxt_qplib_destroy_qp(struct bnxt_qplib_res *res, struct bnxt_qplib_qp *qp)
 {
 	struct bnxt_qplib_rcfw *rcfw = res->rcfw;
 	struct creq_destroy_qp_resp resp = {};
 	struct bnxt_qplib_cmdqmsg msg = {};
 	struct cmdq_destroy_qp req = {};
 	u32 tbl_indx;
-	int rc;
 
 	spin_lock_bh(&rcfw->tbl_lock);
 	tbl_indx = map_qp_id_to_tbl_indx(qp->id, rcfw);
@@ -1488,16 +1486,7 @@ int bnxt_qplib_destroy_qp(struct bnxt_qplib_res *res,
 	req.qp_cid = cpu_to_le32(qp->id);
 	bnxt_qplib_fill_cmdqmsg(&msg, &req, &resp, NULL, sizeof(req),
 				sizeof(resp), 0);
-	rc = bnxt_qplib_rcfw_send_message(rcfw, &msg);
-	if (rc) {
-		spin_lock_bh(&rcfw->tbl_lock);
-		rcfw->qp_tbl[tbl_indx].qp_id = qp->id;
-		rcfw->qp_tbl[tbl_indx].qp_handle = qp;
-		spin_unlock_bh(&rcfw->tbl_lock);
-		return rc;
-	}
-
-	return 0;
+	bnxt_qplib_rcfw_send_message(rcfw, &msg);
 }
 
 void bnxt_qplib_free_qp_res(struct bnxt_qplib_res *res,
