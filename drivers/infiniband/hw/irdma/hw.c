@@ -166,25 +166,31 @@ static void irdma_process_reserved_ceqe(struct irdma_pci_f *rf,
 	}
 }
 
+/* CEQEs handled by one run of a CEQ tasklet before it reschedules itself */
+#define IRDMA_CEQ_BUDGET	256
+
 /**
  * irdma_process_ceq - handle ceq for completions
  * @rf: RDMA PCI function
  * @ceq: ceq having cq for completion
+ *
+ * Return: True if the CEQ was found empty, false if the budget ran out.
  */
-static void irdma_process_ceq(struct irdma_pci_f *rf, struct irdma_ceq *ceq)
+static bool irdma_process_ceq(struct irdma_pci_f *rf, struct irdma_ceq *ceq)
 {
 	struct irdma_sc_dev *dev = &rf->sc_dev;
+	u32 budget = IRDMA_CEQ_BUDGET;
 	struct irdma_sc_ceq *sc_ceq;
 	unsigned long flags;
 	u32 cq_idx;
 
 	sc_ceq = &ceq->sc_ceq;
-	do {
+	while (budget--) {
 		spin_lock_irqsave(&ceq->ce_lock, flags);
 
 		if (!irdma_sc_process_ceq(dev, sc_ceq, &cq_idx)) {
 			spin_unlock_irqrestore(&ceq->ce_lock, flags);
-			break;
+			return true;
 		}
 
 		/* Normal CQs must be handled while holding CEQ lock. */
@@ -197,7 +203,9 @@ static void irdma_process_ceq(struct irdma_pci_f *rf, struct irdma_ceq *ceq)
 		spin_unlock_irqrestore(&ceq->ce_lock, flags);
 
 		irdma_process_reserved_ceqe(rf, dev, cq_idx);
-	} while (1);
+	}
+
+	return false;
 }
 
 static void irdma_set_flush_fields(struct irdma_sc_qp *qp,
@@ -548,10 +556,15 @@ static void irdma_ena_intr(struct irdma_sc_dev *dev, u32 msix_id)
 static void irdma_dpc(struct tasklet_struct *t)
 {
 	struct irdma_pci_f *rf = from_tasklet(rf, t, dpc_tasklet);
+	bool ceq_done = true;
 
 	if (rf->msix_shared)
-		irdma_process_ceq(rf, rf->ceqlist);
+		ceq_done = irdma_process_ceq(rf, rf->ceqlist);
 	irdma_process_aeq(rf);
+	if (!ceq_done) {
+		tasklet_schedule(&rf->dpc_tasklet);
+		return;
+	}
 	irdma_ena_intr(&rf->sc_dev, rf->iw_msixtbl[0].idx);
 }
 
@@ -564,7 +577,10 @@ static void irdma_ceq_dpc(struct tasklet_struct *t)
 	struct irdma_ceq *iwceq = from_tasklet(iwceq, t, dpc_tasklet);
 	struct irdma_pci_f *rf = iwceq->rf;
 
-	irdma_process_ceq(rf, iwceq);
+	if (!irdma_process_ceq(rf, iwceq)) {
+		tasklet_schedule(&iwceq->dpc_tasklet);
+		return;
+	}
 	irdma_ena_intr(&rf->sc_dev, iwceq->msix_idx);
 }
 
